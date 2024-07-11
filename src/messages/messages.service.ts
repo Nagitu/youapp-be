@@ -6,11 +6,13 @@ import { Message } from 'src/db/schema/message.schema';
 import { Model } from 'mongoose';
 import { UsersService } from 'src/users/users.service';
 import { RabbitMQService } from 'src/utils/rabbitmq.service';
+import { ChatRoom } from 'src/db/schema/chatroom.schema';
 
 @Injectable()
 export class MessagesService {
 
   constructor(
+    @InjectModel(ChatRoom.name) private chatRoomModel: Model<ChatRoom>,
     @InjectModel(Message.name) private MessageModel: Model<Message>,
     private usersService: UsersService,
     private rabbitMQService: RabbitMQService 
@@ -18,12 +20,13 @@ export class MessagesService {
   
   
   async create(id:string,createMessageDto: CreateMessageDto) {
-    const {message,receiverId} = createMessageDto
+    const {message,chatRoomId} = createMessageDto
 
     const newMessage = new this.MessageModel({
       senderId: id || '',
-      message: message || null, 
-      receiverId:receiverId|| '',
+      message: message || null,
+      chatRoom: chatRoomId, 
+      // receiverId:receiverId|| '',
     });
     const sendMessage = await newMessage.save();
     const notification = {
@@ -36,18 +39,19 @@ export class MessagesService {
    }
 
  async findOwnMesage(id: string) {
-    const messages = await this.MessageModel.find({
-      $or: [
-        { senderId: id },
-        { receiverId: id }
-      ]
-    }).exec();
+
+  const room = await this.chatRoomModel.find({userIds : id})
+  if(!room){
+    throw new NotFoundException('room not found')
+  }
+  const chatRoomIds = room.map(chatRoom => chatRoom.id);
+    const messages = await this.MessageModel.find({chatRoom : chatRoomIds});
 
     if (messages.length === 0) {
       throw new NotFoundException('Messages not found');
     }
 
-    return messages;
+    return {room,messages};
   }
   
 }

@@ -12,6 +12,7 @@ import { ApiBody, ApiResponse } from '@nestjs/swagger';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  
   @HttpCode(HttpStatus.OK)
   @Post('login')
   @ApiBody({ type: LoginDto })

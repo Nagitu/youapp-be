@@ -3,7 +3,7 @@ import { ProfileService } from './profile.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { ApiParam, ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
 
 @Controller('profile')
 export class ProfileController {
@@ -27,7 +27,7 @@ export class ProfileController {
 
   @UseGuards(AuthGuard)
   @Patch('update')
-  @ApiParam({ name: 'id', required: true, description: 'User ID' })
+  @ApiBody({type: UpdateProfileDto})
   @ApiResponse({ status: 200, description: 'Profile success updated' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   update(@Body() updateProfileDto: UpdateProfileDto , @Request() req) {

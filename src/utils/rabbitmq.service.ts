@@ -11,7 +11,7 @@ export class RabbitMQService {
   }
 
   private async initialize() {
-    this.connection = await amqp.connect('amqp://localhost:5672'); // sesuaikan dengan URL RabbitMQ Anda
+    this.connection = await amqp.connect('amqp://localhost:5672'); 
     this.channel = await this.connection.createChannel();
     await this.channel.assertQueue('message_queue', { durable: true });
   }
