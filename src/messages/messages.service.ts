@@ -1,12 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateMessageDto } from './dto/create-message.dto';
-import { UpdateMessageDto } from './dto/update-message.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Message } from 'src/db/schema/message.schema';
+import { Message } from '../db/schema/message.schema';
 import { Model } from 'mongoose';
-import { UsersService } from 'src/users/users.service';
-import { RabbitMQService } from 'src/utils/rabbitmq.service';
-import { ChatRoom } from 'src/db/schema/chatroom.schema';
+import { RabbitMQService } from '../utils/rabbitmq.service';
+import { ChatRoom } from '../db/schema/chatroom.schema';
+
 
 @Injectable()
 export class MessagesService {
@@ -14,44 +13,62 @@ export class MessagesService {
   constructor(
     @InjectModel(ChatRoom.name) private chatRoomModel: Model<ChatRoom>,
     @InjectModel(Message.name) private MessageModel: Model<Message>,
-    private usersService: UsersService,
     private rabbitMQService: RabbitMQService 
   ) {}
   
   
-  async create(id:string,createMessageDto: CreateMessageDto) {
-    const {message,chatRoomId} = createMessageDto
-
-    const newMessage = new this.MessageModel({
-      senderId: id || '',
-      message: message || null,
-      chatRoom: chatRoomId, 
-      // receiverId:receiverId|| '',
+  async create(userId: string, createMessageDto: CreateMessageDto) {
+    const { message, chatRoom } = createMessageDto;
+    const room = await this.chatRoomModel.findOne({
+      _id:chatRoom,
+      userIds: userId
     });
-    const sendMessage = await newMessage.save();
+
+    if (!room) {
+      throw new ForbiddenException('Room not found or user is not in the RoomChat');
+    }
+  
+    const newMessage = await this.MessageModel.create({
+      senderId: userId,
+      message: message || null,
+      chatRoom: chatRoom,
+    });
+  
+    await this.chatRoomModel.findByIdAndUpdate(newMessage.chatRoom,{ $push: { messages: newMessage._id } })
+    return newMessage
+  
     const notification = {
       event: 'message_created',
-      data: sendMessage,
+      data: newMessage,
     };
+  
     await this.rabbitMQService.sendMessage(JSON.stringify(notification));
-
-    return sendMessage;
-   }
-
- async findOwnMesage(id: string) {
-
-  const room = await this.chatRoomModel.find({userIds : id})
-  if(!room){
-    throw new NotFoundException('room not found')
-  }
-  const chatRoomIds = room.map(chatRoom => chatRoom.id);
-    const messages = await this.MessageModel.find({chatRoom : chatRoomIds});
-
-    if (messages.length === 0) {
-      throw new NotFoundException('Messages not found');
-    }
-
-    return {room,messages};
+  
+    return newMessage;
   }
   
-}
+
+   async findOwnMessage(id: string) {
+    // Temukan semua chatroom yang berisi userId
+    const rooms = await this.chatRoomModel.find({ userIds: id }).populate('messages').populate('userIds');
+    
+    // Jika tidak ada chatroom yang ditemukan, lemparkan NotFoundException
+    if (rooms.length === 0) {
+      throw new NotFoundException('room not found');
+    }
+    
+    // Mempersiapkan hasil yang akan dikembalikan
+    const result = rooms.map(room => {
+      return {
+        chatRoomId: room._id,
+        userIds: room.userIds,
+        messages: room.messages,
+      };
+    });
+  
+    // Kembalikan hasil akhir
+    return result;
+  }
+  
+  }
+  

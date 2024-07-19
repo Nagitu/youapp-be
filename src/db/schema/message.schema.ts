@@ -6,27 +6,17 @@ import { ChatRoom } from './chatroom.schema';
 import { User } from './user.schema';
 export type UserDocument = HydratedDocument<Message>;
 
-@Schema()
+@Schema({timestamps:true})
 export class Message  {
-  @Prop({ type: String, default: uuidv4, unique: true })
-  id: string;
 
-  @Prop({ required: true,type: String, ref: 'User',})
-  senderId: string;
+  @Prop({ required: true,type: mongoose.Schema.Types.ObjectId, ref: 'User',})
+  senderId: User;
 
-  @Prop({required: true, type: String, ref: 'ChatRoom',})
+  @Prop({required: true, type: mongoose.Schema.Types.ObjectId, ref: 'ChatRoom',})
   chatRoom: ChatRoom;
 
   @Prop({ required: true})
   message: string;
-
-  // @Prop({ required: true,type: String, ref: 'User', })
-  // receiverId: string;
-  @Prop({ required: true, type: Date, default: Date.now })
-  createdAt: Date;
-
-  @Prop({})
-  messages : any[]
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);

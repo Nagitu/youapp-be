@@ -1,20 +1,49 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import * as request from 'supertest';
 import { MessagesController } from './messages.controller';
 import { MessagesService } from './messages.service';
+import { AuthGuard } from '../auth/auth.guard';
 
 describe('MessagesController', () => {
-  let controller: MessagesController;
+  let app: INestApplication;
+  let messagesController : MessagesController;
+  let messagesService : MessagesService;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+  beforeAll(async () => {
+    const moduleRef: TestingModule = await Test.createTestingModule({
       controllers: [MessagesController],
-      providers: [MessagesService],
-    }).compile();
+      providers: [
+        MessagesService,
+        {
+          provide: MessagesService,
+          useValue: {
+            create : jest.fn(),
+            findOwnMessage : jest.fn()
+          }
+        },
+      ],
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({
+        canActivate: (context) => {
+          const request = context.switchToHttp().getRequest();
+          request.user = { id: 'someUserId' }; // Mocked user
+          return true;
+        },
+      })
+      .compile();
 
-    controller = module.get<MessagesController>(MessagesController);
+      messagesService = moduleRef.get<MessagesService>(MessagesService);
+      messagesController = moduleRef.get<MessagesController>(MessagesController)
+    app = moduleRef.createNestApplication();
+    await app.init();
   });
 
   it('should be defined', () => {
-    expect(controller).toBeDefined();
+    expect(messagesController).toBeDefined();
+  });
+  afterAll(async () => {
+    await app.close();
   });
 });

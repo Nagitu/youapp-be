@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request }
 import { MessagesService } from './messages.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard } from '../auth/auth.guard';
 import { ApiBody, ApiResponse } from '@nestjs/swagger';
 
 @Controller('')
@@ -24,7 +24,7 @@ export class MessagesController {
   @ApiResponse({ status: 200, description: 'data successfull get' })
   findAll(@Request() req) {
     const id = req.user.id
-    return this.messagesService.findOwnMesage(id);
+    return this.messagesService.findOwnMessage(id);
   }
 
 }

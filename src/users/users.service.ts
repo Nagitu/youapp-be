@@ -4,9 +4,9 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from '../db/schema/user.schema';
 import { Model, Types } from 'mongoose';
-import { Profile, ProfileDocument } from 'src/db/schema/profile.schema';
-import { Like } from 'src/db/schema/like.schema';
-import { ChatRoom } from 'src/db/schema/chatroom.schema';
+import { Profile, ProfileDocument } from '../db/schema/profile.schema';
+import { Like } from '../db/schema/like.schema';
+import { ChatRoom } from '../db/schema/chatroom.schema';
 
 
 @Injectable()
@@ -37,24 +37,15 @@ async create(createUserDto: CreateUserDto): Promise<User> {
   async findAll(): Promise<User[]> {
     return this.userModel.find().populate('profile').exec();
   }
-  async likeUser(userId1: string, userId2: string) {
-    // Validasi UUID menggunakan regex (versi sederhana)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(userId1) || !uuidRegex.test(userId2)) {
-      throw new BadRequestException('Invalid user IDs');
-    }
 
-    // Simpan suka
+  async likeUser(userId1: string, userId2: string) {
     const newLike = new this.likeModel({ user1: userId1, user2: userId2, operation: 'like' });
     await newLike.save();
-
-    // Periksa apakah pengguna lain juga menyukai pengguna ini
     const mutualLike = await this.likeModel.findOne({ user1: userId2, user2: userId1, operation: 'like' });
     if (mutualLike) {
-      // Jika saling suka, buat chatroom
+
       const userIds = [userId1, userId2];
-      const newChatRoom = new this.chatroomModel({ userIds });
-      await newChatRoom.save();
+      const newChatRoom = await this.chatroomModel.create({ userIds });
       return newChatRoom;
     }
 
